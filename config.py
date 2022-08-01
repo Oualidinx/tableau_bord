@@ -4,7 +4,9 @@ class Config:
 
 
 class Development(Config):
-    SQLALCHEMY_DATABASE_URI = "sqlite:///dev.sqlite"
+    SQLALCHEMY_TRACK_MODIFICATIONS = True
+    SQLALCHEMY_DATABASE_URI="postgresql://oualid:1091eb5a6c62@localhost/tableau_bord"
+    # SQLALCHEMY_DATABASE_URI = "sqlite:///dev.sqlite"
 
 
 config = {
