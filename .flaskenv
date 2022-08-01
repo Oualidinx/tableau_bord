@@ -1,0 +1,4 @@
+FLASK_DEBUG=1
+FLASK_APP=app_starter.py
+FLASK_ENV=development
+APP_ADDRESS=192.168.1.122

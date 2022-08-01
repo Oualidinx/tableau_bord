@@ -1,0 +1,217 @@
+{% extends "master_dashboard.html" %}
+{% block additional_styles %}
+    <link href="{{ url_for('static', filename='dist/theme/mermaid.min.css') }}" rel="stylesheet" />
+{% endblock %}
+{% block main_tag %}
+    <div class="row">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category , message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <div class="col" style="position: relative; text-align: right">
+            <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#AddAggModal">
+                <i class="fa fa-circle-plus"></i>
+                   Nouveau
+            </button>
+            <div class="modal fade" id="AddAggModal" tabindex="-1" aria-labelledby="AddAggModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="AddAggModalLabel">Ajouter un Aggrégat</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="add-agg-form" action="{{ url_for('admin_bp.aggregates') }}" method="post">
+                                {{ form.hidden_tag() }}
+                                <div class="row mb-3">
+                                    <div class="col-md">
+                                        <div class="form-floating">
+                                            {% if form.label.errors %}
+                                                {{ form.label(class="form-control") }}
+                                                <div class="alert alert-warning">
+                                                  {% for error in form.label.errors %}
+                                                    <span>{{ error }}</span>
+                                                  {% endfor %}
+                                                </div>
+                                            {% else %}
+                                                {{ form.label(class="form-control") }}
+                                            {% endif %}
+                                            {{ form.label.label(class="form-control-label") }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md">
+                                        <div class="form-floating">
+                                            {% if form.code.errors %}
+                                                {{ form.code(class="form-control") }}
+                                                <div class="invalid-feedback">
+                                                  {% for error in form.code.errors %}
+                                                    <span>{{ error }}</span>
+                                                  {% endfor %}
+                                                </div>
+                                            {% else %}
+                                                {{ form.code(class="form-control") }}
+                                            {% endif %}
+                                            {{ form.code.label(class="form-control-label") }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md">
+                                        <div class="form-floating">
+                                            {% if form.service.errors %}
+                                                {{ form.service(class="form-control") }}
+                                                <div class="invalid-feedback">
+                                                  {% for error in form.code.errors %}
+                                                    <span>{{ error }}</span>
+                                                  {% endfor %}
+                                                </div>
+                                            {% else %}
+                                                {{ form.service(class="form-control") }}
+                                            {% endif %}
+                                            {{ form.service.label(class="form-control-label") }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row" >
+                                    <div class="col-md" style="position: relative; text-align: right;">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                                        {{ form.submit(class="btn btn-primary") }}
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header card-header-primary">
+                  <h4 class="card-title ">Les aggrégats</h4>
+                </div>
+                <div class="card-body">
+                    <div id="table"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block additional_scripts %}
+    <script src="{{ url_for('static', filename='js/gridjs.umd.js') }}"></script>
+    <script>
+
+            const tableDiv = document.getElementById('table');
+            const updateUrl = (prev, query) => {
+                return prev + (prev.indexOf('?') >= 0 ? '&' : '?') + new URLSearchParams(query).toString();
+            };
+            const editableCellAttributes = (data, row, col) => {
+                if (row) {
+                    return {contentEditable: 'true', 'data-element-id': row.cells[0].data};
+                }
+                else {
+                    return {};
+                }
+            };
+
+            new gridjs.Grid({
+            columns: [
+                { id: "id", name:"ID",'sort':false },
+                { id: "label", name:"Libéllé", 'attributes': editableCellAttributes},
+                { id: "code", name:"Code aggrégat", 'attributes': editableCellAttributes},
+                { id: "service", name:"Département"},
+                {
+                    name: 'Actions',
+                    formatter: (_, row) => {
+                        return gridjs.h('a', {
+                            className: 'link',
+                            href: '{{ url_for('admin_bp.index') }}aggregates/delete/'+row.cells[0].data
+                        }, gridjs.h('i', {className: 'fa-solid fa-trash-can'}));
+                    }
+                }
+            ],
+            server: {
+                contentType:"application/json",
+                url: "{{ url_for('admin_bp.get_aggregates') }}",
+                then: results => results.data,
+                total: results => results.total,
+            },
+            search: {
+                enabled: true,
+                server: {
+                    url: (prev, search) => {
+                        return updateUrl(prev, {search});
+                    },
+                },
+            },
+            className: {
+                table: 'table table-striped'
+            },
+            sort: {
+                enabled: true,
+                multiColumn: true,
+                server: {
+                    url: (prev, columns) => {
+                    const columnIds = ['id','label','code','service'];
+                    const sort = columns.map(col => (col.direction === 1 ? '+' : '-') + columnIds[col.index]);
+                    return updateUrl(prev, {sort});
+                    },
+                },
+            },
+            pagination: {
+                enabled: true,
+                server: {
+                    url: (prev, page, limit) => {
+                        return updateUrl(prev, {start: page * limit, length: limit});
+                    },
+                },
+            },
+        }).render(tableDiv).forceRender();
+
+        let savedValue;
+
+            tableDiv.addEventListener('focusin', ev => {
+                if (ev.target.tagName === 'TD') {
+                    savedValue = ev.target.textContent;
+                }
+            });
+
+            tableDiv.addEventListener('focusout', ev => {
+                if (ev.target.tagName === 'TD') {
+                      if (savedValue !== ev.target.textContent) {
+                            fetch("{{ url_for('admin_bp.update_aggregate') }}", {
+                                  method: 'POST',
+                                  headers: {'Content-Type': 'application/json'},
+                                  body: JSON.stringify({
+                                    id: ev.target.dataset.elementId,
+                                    [ev.target.dataset.columnId]: ev.target.textContent
+                                  }),
+                            });
+                      }
+                      savedValue = undefined;
+                }
+            });
+
+            tableDiv.addEventListener('keydown', ev => {
+                if (ev.target.tagName === 'TD') {
+                      if (ev.key === 'Escape') {
+                        ev.target.textContent = savedValue;
+                        ev.target.blur();
+                      }
+                      else if (ev.key === 'Enter') {
+                        ev.preventDefault();
+                        ev.target.blur();
+                    }
+                }
+            });
+    </script>
+
+{% endblock %}

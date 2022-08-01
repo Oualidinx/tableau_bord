@@ -1,0 +1,232 @@
+{% extends "master_dashboard.html" %}
+{% block additional_styles %}
+    <link href="{{ url_for('static', filename='dist/theme/mermaid.min.css') }}" rel="stylesheet" />
+{% endblock %}
+{% block main_tag %}
+    <div class="row">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category , message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <div class="col" style="position: relative; text-align: right">
+            <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#AddEmpModal">
+                <i class="fa fa-circle-plus"></i>
+                   Nouveau
+            </button>
+            <div class="modal fade" id="AddEmpModal" tabindex="-1" aria-labelledby="AddEmpModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="AddEmpModalLabel">Ajouter un Employe</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="add-agg-form" action="{{ url_for('admin_bp.employees') }}" method="post">
+                                {{ form.hidden_tag() }}
+                                <div class="row mb-3">
+                                    <div class="col-md">
+                                        <div class="form-floating">
+                                            {% if form.username.errors %}
+                                                {{ form.username(class="form-control") }}
+                                                <div class="alert alert-warning">
+                                                  {% for error in form.username.errors %}
+                                                    <span>{{ error }}</span>
+                                                  {% endfor %}
+                                                </div>
+                                            {% else %}
+                                                {{ form.username(class="form-control") }}
+                                            {% endif %}
+                                            {{ form.username.label(class="form-control-label") }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md">
+                                        <div class="form-floating">
+                                            {% if form.password.errors %}
+                                                {{ form.password(class="form-control") }}
+                                                <div class="invalid-feedback">
+                                                  {% for error in form.password.errors %}
+                                                    <span>{{ error }}</span>
+                                                  {% endfor %}
+                                                </div>
+                                            {% else %}
+                                                {{ form.password(class="form-control") }}
+                                            {% endif %}
+                                            {{ form.password.label(class="form-control-label") }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md">
+                                        <div class="form-floating">
+                                            {% if form.service.errors %}
+                                                {{ form.service(class="form-control") }}
+                                                <div class="invalid-feedback">
+                                                  {% for error in form.service.errors %}
+                                                    <span>{{ error }}</span>
+                                                  {% endfor %}
+                                                </div>
+                                            {% else %}
+                                                {{ form.service(class="form-control") }}
+                                            {% endif %}
+                                            {{ form.service.label(class="form-control-label") }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md">
+                                        <div class="form-floating">
+                                            {% if form.role.errors %}
+                                                {{ form.role(class="form-control") }}
+                                                <div class="invalid-feedback">
+                                                  {% for error in form.role.errors %}
+                                                    <span>{{ error }}</span>
+                                                  {% endfor %}
+                                                </div>
+                                            {% else %}
+                                                {{ form.role(class="form-control") }}
+                                            {% endif %}
+                                            {{ form.role.label(class="form-control-label") }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row" >
+                                    <div class="col-md" style="position: relative; text-align: right;">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                                        {{ form.submit(class="btn btn-primary") }}
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header card-header-primary">
+                  <h4 class="card-title ">Les employés</h4>
+                </div>
+                <div class="card-body">
+                    <div id="table"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block additional_scripts %}
+    <script src="{{ url_for('static', filename='js/gridjs.umd.js') }}"></script>
+    <script>
+
+            const tableDiv = document.getElementById('table');
+            const updateUrl = (prev, query) => {
+                return prev + (prev.indexOf('?') >= 0 ? '&' : '?') + new URLSearchParams(query).toString();
+            };
+            const editableCellAttributes = (data, row, col) => {
+                if (row) {
+                    return {contentEditable: 'true', 'data-element-id': row.cells[0].data};
+                }
+                else {
+                    return {};
+                }
+            };
+
+            new gridjs.Grid({
+            columns: [
+                { id: "id", name:"ID",'sort':false },
+                { id: "username", name:"Pseudonyme", 'attributes': editableCellAttributes},
+                { id: "role", name:"Fonction"},
+                { id: "service", name:"Département"},
+                {
+                    name: 'Actions',
+                    formatter: (_, row) => {
+                        return gridjs.h('a', {
+                            className: 'link',
+                            href: '{{ url_for('admin_bp.index') }}employees/delete/'+row.cells[0].data
+                        }, gridjs.h('i', {className: 'fa-solid fa-trash-can'}));
+                    }
+                }
+            ],
+            server: {
+                contentType:"application/json",
+                url: "{{ url_for('admin_bp.get_emps') }}",
+                then: results => results.data,
+                total: results => results.total,
+            },
+            search: {
+                enabled: true,
+                server: {
+                    url: (prev, search) => {
+                        return updateUrl(prev, {search});
+                    },
+                },
+            },
+            className: {
+                table: 'table table-striped'
+            },
+            sort: {
+                enabled: true,
+                multiColumn: true,
+                server: {
+                    url: (prev, columns) => {
+                    const columnIds = ['id','username','role','service'];
+                    const sort = columns.map(col => (col.direction === 1 ? '+' : '-') + columnIds[col.index]);
+                    return updateUrl(prev, {sort});
+                    },
+                },
+            },
+            pagination: {
+                enabled: true,
+                server: {
+                    url: (prev, page, limit) => {
+                        return updateUrl(prev, {start: page * limit, length: limit});
+                    },
+                },
+            },
+        }).render(tableDiv).forceRender();
+
+        let savedValue;
+
+            tableDiv.addEventListener('focusin', ev => {
+                if (ev.target.tagName === 'TD') {
+                    savedValue = ev.target.textContent;
+                }
+            });
+
+            tableDiv.addEventListener('focusout', ev => {
+                if (ev.target.tagName === 'TD') {
+                      if (savedValue !== ev.target.textContent) {
+                            fetch("{{ url_for('admin_bp.edit_emp') }}", {
+                                  method: 'POST',
+                                  headers: {'Content-Type': 'application/json'},
+                                  body: JSON.stringify({
+                                    id: ev.target.dataset.elementId,
+                                    [ev.target.dataset.columnId]: ev.target.textContent
+                                  }),
+                            });
+                      }
+                      savedValue = undefined;
+                }
+            });
+
+            tableDiv.addEventListener('keydown', ev => {
+                if (ev.target.tagName === 'TD') {
+                      if (ev.key === 'Escape') {
+                        ev.target.textContent = savedValue;
+                        ev.target.blur();
+                      }
+                      else if (ev.key === 'Enter') {
+                        ev.preventDefault();
+                        ev.target.blur();
+                    }
+                }
+            });
+    </script>
+
+{% endblock %}
